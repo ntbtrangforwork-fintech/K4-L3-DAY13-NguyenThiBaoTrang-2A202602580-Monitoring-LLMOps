@@ -100,6 +100,7 @@ python -m pytest -q
 ```
 
 API mặc định chạy tại `http://127.0.0.1:8000`; health check ở `/health`, metrics ở `/metrics`.
+Dashboard runtime sáu panel của bài làm này ở `http://127.0.0.1:8000/dashboard` và tự đọc `data/logs.jsonl` trong cửa sổ 60 phút.
 
 ## Lỗi thường gặp
 

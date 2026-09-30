@@ -44,12 +44,12 @@
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
 | `validate_logs.py` | 30/100 | 100/100 | CP1 bổ sung correlation ID, enrichment và PII processor. |
-| `validate_dashboard.py` | HỢP LỆ: 6/6 panel | | Contract dashboard mặc định hợp lệ. |
-| `pytest` | 22 passed in 3.61s | 26 passed in 2.58s | Chạy bằng Python 3.11.16 trong `.venv`. |
-| Số traces hợp lệ | 10 trace mới | | 10 root observations/10 trace ID trong project Langfuse cá nhân. |
+| `validate_dashboard.py` | HỢP LỆ: 6/6 panel | HỢP LỆ: 6/6 panel | Dashboard runtime đọc trực tiếp `data/logs.jsonl`. |
+| `pytest` | 22 passed in 3.61s | 29 passed | Chạy bằng Python 3.11.16 trong `.venv`. |
+| Số traces hợp lệ | 10 trace mới | 11 trace CP2 gần nhất | Mỗi trace CP2 có root, retrieval và generation. |
 | Số PII leak | 0 | 0 | Kiểm tra runtime với email, điện thoại, CCCD và thẻ giả. |
-| Latency P95 / TTFT P95 | | | |
-| Retrieval success rate | | | |
+| Latency P95 / TTFT P95 | | 1729 ms / 50 ms | Cửa sổ dashboard 60 phút sau workload CP2. |
+| Retrieval success rate | | 100% | Tính từ `response_sent.tool_success`. |
 
 ### CP0 — Setup và baseline
 
@@ -70,21 +70,21 @@
 
 ## 5. Tracing và prompt versioning
 
-- **Cách xác nhận traces do chính tôi tạo trong project cá nhân:**
-- **Cấu trúc root/retrieval/generation observations:**
-- **Cách nối trace với log:**
-- **Prompt name:**
-- **Version/label baseline:**
-- **Version/label candidate:**
-- **Trace ID của mỗi version:**
-- **Cách promote và rollback `production`:**
+- **Cách xác nhận traces do chính tôi tạo trong project cá nhân:** Xác thực bằng Langfuse Projects API rằng key thuộc project `day13-k4-l3b-2A202602580`, sau đó chạy workload từ repo cá nhân. Observations v2 API ghi nhận 11 trace gần nhất, mỗi trace có đủ ba observation CP2.
+- **Cấu trúc root/retrieval/generation observations:** `lab-agent-run` (`AGENT`) là root; `retrieval` (`RETRIEVER`) và `generation` (`GENERATION`) là hai child cùng trỏ `parent_observation_id` của root. Retrieval chỉ lưu query/document preview đã scrub. Generation có model, managed prompt link, input/output token, TTFT và cost.
+- **Cách nối trace với log:** `correlation_id` được bind từ middleware vào log và đồng thời ghi trong metadata của root, retrieval và generation. Ví dụ baseline dùng `req-bae10001`; candidate dùng `req-cad20002`.
+- **Prompt name:** `day13-chat`.
+- **Version/label baseline:** Version 1, labels `baseline` và `production` sau rollback.
+- **Version/label candidate:** Version 2, labels `candidate` và `latest`.
+- **Trace ID của mỗi version:** baseline v1 `db6141ff46bcefaee81d880be66fc315`; candidate v2 `c78bab9e839a6f55cfec54cefa6ec8d9`; production-v2 trước rollback `4c0a933a8787232fde4a727d79983ad9`.
+- **Cách promote và rollback `production`:** Dùng Langfuse prompt label, không sửa code: chuyển `production` sang version 2, chạy request `req-face2002` và xác nhận trace metadata `prompt_label=production`, `prompt_version=2`; sau đó chuyển `production` về version 1. Trạng thái cuối là v1=`baseline, production`, v2=`candidate, latest`.
 
 ## 6. Dashboard, SLO và alerts
 
-- **Dashboard và sáu panel:**
-- **SLO và lý do chọn:**
-- **Cách tính error budget:**
-- **Ba alert và runbook tương ứng:**
+- **Dashboard và sáu panel:** Dashboard runtime tại `/dashboard` đọc `data/logs.jsonl`, dùng time range 60 phút và refresh 30 giây. Sáu panel gồm latency P50/P95/P99 + TTFT P95, traffic, error rate + retrieval success, cost, input/output token và quality proxy; mỗi panel hiển thị đơn vị cùng threshold từ `config/dashboard.yaml`.
+- **SLO và lý do chọn:** Trong cửa sổ 28 ngày, 99.5% request phải có `response_sent` và `latency_ms <= 3000`. Baseline CP2 có P95 1729 ms nên ngưỡng 3000 ms bảo vệ tail latency nhưng vẫn chừa biên cho dao động fake LLM/retrieval. Guardrails bổ sung: error rate <=2%, cost <=2.5 USD/ngày, quality trung bình >=0.75 và retrieval success >=90%.
+- **Cách tính error budget:** Target 99.5% cho phép 0.5% request không đạt. Với 10,000 request, error budget là `10,000 × (1 - 0.995) = 50` request lỗi hoặc chậm hơn 3000 ms.
+- **Ba alert và runbook tương ứng:** `HighLatencyP95` (>3000 ms trong 5m, warning), `HighErrorRate` (>2% trong 5m, critical) và `LowQualityScore` (<0.75 trong 10m, warning). Cả ba gửi Slack `#k4-l3b-alerts`, owner `student-2A202602580`, và có quy trình Metrics → Logs → Traces cùng mitigation tại `docs/alerts.md`.
 
 > Ví dụ cách viết error budget: "SLO 99.5% trong 28 ngày nghĩa là error budget 0.5%. Nếu workload có 10,000 request thì tối đa 50 request được phép lỗi hoặc chậm hơn ngưỡng SLO."
 
