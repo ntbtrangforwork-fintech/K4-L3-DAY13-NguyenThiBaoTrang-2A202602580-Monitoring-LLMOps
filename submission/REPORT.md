@@ -4,13 +4,13 @@
 
 ## 1. Thông tin học viên
 
-- **Họ và tên:**
-- **MSSV:**
+- **Họ và tên:** Nguyễn Thị Bảo Trang
+- **MSSV:** 2A202602580
 - **Lớp:** K4-L3B
-- **Repository URL:**
+- **Repository URL:** https://github.com/ntbtrangforwork-fintech/K4-L3-DAY13-NguyenThiBaoTrang-2A202602580-Monitoring-LLMOps
 - **Commit SHA cuối:**
 - **Challenge ID:**
-- **Tên project Langfuse cá nhân:** `day13-k4-l3b-<MSSV>`
+- **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602580`
 
 ## 2. Evidence index
 
@@ -32,18 +32,34 @@
 | Incident metric | `evidence/12-incident-metric.png` |
 | Incident log | `evidence/13-incident-log.png` |
 | Incident trace | `evidence/14-incident-trace.png` |
+| CP0 health check | `evidence/cp0-health.txt` |
+| CP0 load test | `evidence/cp0-load-test.txt` |
+| CP0 log validator baseline | `evidence/cp0-validate-logs.txt` |
+| CP0 dashboard validator baseline | `evidence/cp0-validate-dashboard.txt` |
+| CP0 pytest baseline | `evidence/cp0-pytest.txt` |
+| CP0 Langfuse verification | `evidence/cp0-langfuse-traces.txt` |
 
 ## 3. Kết quả kỹ thuật
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | | | |
-| `validate_dashboard.py` | | | |
-| `pytest` | | | |
-| Số traces hợp lệ | | | |
-| Số PII leak | | | |
+| `validate_logs.py` | 30/100 | | Baseline CP0 chưa đạt là dự kiến; correlation ID và enrichment thuộc CP1. |
+| `validate_dashboard.py` | HỢP LỆ: 6/6 panel | | Contract dashboard mặc định hợp lệ. |
+| `pytest` | 22 passed in 3.61s | | Chạy bằng Python 3.11.16 trong `.venv`. |
+| Số traces hợp lệ | 10 trace mới | | 10 root observations/10 trace ID trong project Langfuse cá nhân. |
+| Số PII leak | 0 | | Kết quả baseline từ `validate_logs.py`. |
 | Latency P95 / TTFT P95 | | | |
 | Retrieval success rate | | | |
+
+### CP0 — Setup và baseline
+
+- **Thời điểm chạy:** 2026-09-30 11:45 (Asia/Bangkok, UTC+07:00)
+- **Commit dùng làm baseline:** `61a34f827748393ced851ea7c9b412dd53dced23`
+- **Môi trường:** Python 3.11.16, dependencies cài từ `requirements.txt` trong `.venv`.
+- **Health:** `/health` trả `ok: true` và `tracing_enabled: true`.
+- **Load test:** 10/10 request trả HTTP 200.
+- **Langfuse:** xác thực thành công; project `day13-k4-l3b-2A202602580`; 10 root observations thuộc 10 trace ID mới trong cửa sổ kiểm tra 10 phút.
+- **Ghi chú:** `correlation_id=MISSING` và log validator 30/100 là baseline trước CP1, không được sửa giả tại CP0.
 
 ## 4. Logging và PII
 

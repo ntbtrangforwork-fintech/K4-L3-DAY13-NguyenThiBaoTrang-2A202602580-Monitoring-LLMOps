@@ -1,0 +1,24 @@
+CP0 Langfuse verification
+Timestamp: 2026-09-30 11:44 UTC+07:00
+Verification method: read-only Langfuse Projects API and Observations v2 API
+
+Authentication: OK
+Project: day13-k4-l3b-2A202602580
+Recent root observations (10-minute window): 10
+Recent unique traces: 10
+Observation name: lab-agent-run
+Environment: dev
+
+Trace IDs:
+- 57737262e4278259c0b444e7f263a014
+- f1dd20e1ed13a4b357e4d196e69bbd26
+- dfb0fcafbd448da835d5012f2b3707dc
+- dfda94d1571dcfca7c34445a7aec47a5
+- b91bcb2747b46ca1092e916626a733d7
+- f9ce402461535fe5a11401f3ae44c6df
+- b8a17a8416f15932bfca1e12db09d761
+- 7fb15b30479473070ae8f8cfa49e0a54
+- 8ce13b4480b5fcdb7e2aca852545e59d
+- 1945e761e6a53e1fde917842c4b749ab
+
+No API key or secret is included in this evidence.

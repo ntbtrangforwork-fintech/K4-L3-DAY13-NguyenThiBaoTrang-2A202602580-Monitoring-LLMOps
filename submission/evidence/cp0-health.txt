@@ -1,0 +1,5 @@
+CP0 health check
+Timestamp: 2026-09-30 11:45 UTC+07:00
+Endpoint: http://127.0.0.1:8000/health
+
+{"ok":true,"tracing_enabled":true,"incidents":{"rag_slow":false,"tool_fail":false,"cost_spike":false}}

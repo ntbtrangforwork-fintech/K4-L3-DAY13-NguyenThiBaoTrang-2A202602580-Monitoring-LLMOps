@@ -1,0 +1,16 @@
+CP0 load test
+Command: .\.venv\Scripts\python.exe scripts/load_test.py
+
+[200] MISSING | qa | 2021.2ms
+[200] MISSING | qa | 426.3ms
+[200] MISSING | summary | 456.3ms
+[200] MISSING | qa | 678.9ms
+[200] MISSING | qa | 494.1ms
+[200] MISSING | summary | 398.5ms
+[200] MISSING | qa | 515.1ms
+[200] MISSING | qa | 376.0ms
+[200] MISSING | qa | 471.5ms
+[200] MISSING | qa | 689.8ms
+
+Result: 10/10 requests returned HTTP 200.
+Note: correlation_id=MISSING is the expected starter baseline before CP1.
