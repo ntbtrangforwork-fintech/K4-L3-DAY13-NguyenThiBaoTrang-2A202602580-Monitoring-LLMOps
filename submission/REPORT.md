@@ -43,11 +43,11 @@
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | 30/100 | | Baseline CP0 chưa đạt là dự kiến; correlation ID và enrichment thuộc CP1. |
+| `validate_logs.py` | 30/100 | 100/100 | CP1 bổ sung correlation ID, enrichment và PII processor. |
 | `validate_dashboard.py` | HỢP LỆ: 6/6 panel | | Contract dashboard mặc định hợp lệ. |
-| `pytest` | 22 passed in 3.61s | | Chạy bằng Python 3.11.16 trong `.venv`. |
+| `pytest` | 22 passed in 3.61s | 26 passed in 2.58s | Chạy bằng Python 3.11.16 trong `.venv`. |
 | Số traces hợp lệ | 10 trace mới | | 10 root observations/10 trace ID trong project Langfuse cá nhân. |
-| Số PII leak | 0 | | Kết quả baseline từ `validate_logs.py`. |
+| Số PII leak | 0 | 0 | Kiểm tra runtime với email, điện thoại, CCCD và thẻ giả. |
 | Latency P95 / TTFT P95 | | | |
 | Retrieval success rate | | | |
 
@@ -63,10 +63,10 @@
 
 ## 4. Logging và PII
 
-- **Cách tạo/nhận và truyền correlation ID:**
-- **Các metadata được ghi vào structured log:**
-- **Cách bảo đảm PII được scrub trước khi ghi:**
-- **Cách kiểm chứng kết quả:**
+- **Cách tạo/nhận và truyền correlation ID:** Middleware xóa contextvars đầu mỗi request, nhận `x-request-id` nếu khớp `req-<8-hex>` hoặc sinh ID mới bằng UUID, bind ID vào structlog context, lưu trong `request.state`, rồi trả lại qua response body/header `x-request-id`. Header `x-response-time-ms` ghi tổng thời gian xử lý HTTP.
+- **Các metadata được ghi vào structured log:** `correlation_id`, `user_id_hash`, `session_id`, `feature`, `model`, `env`, cùng timestamp, level, event và các trường latency/TTFT/token/cost/quality khi đã có kết quả.
+- **Cách bảo đảm PII được scrub trước khi ghi:** `scrub_event` duyệt đệ quy các chuỗi trong event dictionary và chạy sau bước bổ sung exception/stack metadata nhưng trước `JsonlFileProcessor` và `JSONRenderer`. User ID chỉ được ghi dưới dạng SHA-256 rút gọn.
+- **Cách kiểm chứng kết quả:** Workload tạo 12 correlation ID duy nhất. `validate_logs.py` đạt 100/100, không thiếu schema/enrichment và phát hiện 0 PII leak. Request kiểm thử `req-deadbeef` chứa email, điện thoại Việt Nam, CCCD và thẻ giả; log chỉ còn các marker `[REDACTED_*]`. Public tests đạt 26/26.
 
 ## 5. Tracing và prompt versioning
 
