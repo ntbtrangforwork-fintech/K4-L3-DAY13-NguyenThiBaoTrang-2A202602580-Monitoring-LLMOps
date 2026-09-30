@@ -9,7 +9,7 @@
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/ntbtrangforwork-fintech/K4-L3-DAY13-NguyenThiBaoTrang-2A202602580-Monitoring-LLMOps
 - **Commit SHA cuối:**
-- **Challenge ID:**
+- **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602580`
 
 ## 2. Evidence index
@@ -18,17 +18,17 @@
 
 | Evidence | Đường dẫn |
 |---|---|
-| Pytest cuối | `evidence/01-pytest.png` |
+| Pytest cuối | `evidence/01-pytest.txt` |
 | Log validator | `evidence/02-log-validator.png` |
 | Dashboard validator | `evidence/03-dashboard-validator.png` |
 | Structured log | `evidence/04-structured-log.png` |
-| PII redaction | `evidence/05-pii-redaction.png` |
+| PII redaction | `evidence/05a-pii-test-input.png`, `evidence/05b-pii-redacted-log.png` |
 | Trace list | `evidence/06-trace-list.png` |
 | Trace waterfall | `evidence/07-trace-waterfall.png` |
-| Trace metadata | `evidence/08-trace-metadata.png` |
+| Trace metadata | `evidence/08a-trace-metadata.png`, `evidence/08b-generation-usage.png` |
 | Prompt versions | `evidence/09-prompt-versions.png` |
 | Prompt rollback | `evidence/10-prompt-rollback.png` |
-| Dashboard runtime | `evidence/11-dashboard-overview.png` |
+| Dashboard runtime | `evidence/11a-dashboard-latency-traffic.png`, `evidence/11b-dashboard-error-cost-token-quality.png` |
 | Incident metric | `evidence/12-incident-metric.png` |
 | Incident log | `evidence/13-incident-log.png` |
 | Incident trace | `evidence/14-incident-trace.png` |
@@ -90,33 +90,33 @@
 
 ## 7. Điều tra challenge
 
-- **Challenge ID:**
-- **Khoảng thời gian điều tra:**
-- **Triệu chứng từ metrics:**
-- **Log line và correlation ID liên quan:**
-- **Trace ID và span gây ảnh hưởng:**
-- **Root cause:**
-- **Fix action:**
-- **Preventive measure:**
+- **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`.
+- **Khoảng thời gian điều tra:** workload challenge chạy từ 14:28:04 đến 14:28:18 ngày 30/09/2026 (Asia/Bangkok, UTC+07:00); incident được tắt lúc 14:35:12 cùng ngày.
+- **Triệu chứng từ metrics:** 5/5 request trả HTTP 200 nhưng latency ứng dụng lần lượt là 2653, 2653, 2654, 2655 và 2655 ms; P50=2654 ms, P95=2655 ms, vượt ngưỡng challenge 2000 ms. TTFT P95 vẫn là 50 ms, retrieval success 100% và error count bằng 0, nên đây là suy giảm latency chứ không phải lỗi request.
+- **Log line và correlation ID liên quan:** dòng 63–64 trong `data/logs.jsonl` ghi `request_received` rồi `response_sent` của `correlation_id=req-62cdec8c`; request có `latency_ms=2655`, `ttft_ms=50`, `tool_name=retrieval`, `tool_success=true`, `tokens_in=36`, `tokens_out=81`, `cost_usd=0.001323` và `quality_score=0.9`.
+- **Trace ID và span gây ảnh hưởng:** trace `deaebe6b65ce78307a8cd655879d29e1` có cùng `correlation_id=req-62cdec8c`. Root `lab-agent-run` mất khoảng 2658 ms; child span `retrieval` mất 2501 ms, trong khi `generation` chỉ mất 154 ms.
+- **Root cause:** retrieval bị tăng độ trễ khoảng 2.5 giây. Bằng chứng là retrieval chiếm gần toàn bộ thời gian của root span, còn generation, TTFT, token, cost, quality và tỉ lệ thành công vẫn bình thường; vì vậy prompt/model không phải nguồn regression.
+- **Fix action:** tắt incident `rag_slow` bằng `python scripts/inject_incident.py --disable` để khôi phục retrieval. Trong môi trường production, hành động tương đương là rollback cấu hình/deployment retrieval gây chậm, kiểm tra vector store và áp dụng timeout/fallback trước khi mở lại traffic đầy đủ.
+- **Preventive measure:** cảnh báo theo cả latency P95 toàn request và latency riêng của retrieval; thêm timeout, circuit breaker/cache fallback cho retrieval; duy trì runbook Metrics → Logs → Traces và chạy load test có regression threshold trước khi deploy thay đổi retrieval.
 
 > Gợi ý cách viết ngắn, không thay cho evidence thực tế: "Metric cho thấy `[latency/error/cost/quality]` bất thường trong `[khoảng thời gian]`. Log line `[event]` có `correlation_id=[...]` đại diện cho request bị ảnh hưởng. Trace cùng `correlation_id` cho thấy span `[retrieval/generation/prompt/tool]` có dấu hiệu `[chậm/lỗi/token tăng]`. Root cause là `[nguyên nhân suy ra từ evidence]`. Fix action là `[hành động khôi phục]`; preventive measure là `[alert/runbook/test/guardrail để ngăn tái diễn]`."
 
 ## 8. Giải thích và tự đánh giá
 
-- **Một quyết định kỹ thuật quan trọng và lý do:**
-- **Một lỗi/blocker đã gặp:**
-- **Cách tìm nguyên nhân và xử lý:**
-- **Cách hiểu luồng Metrics → Logs → Traces:**
-- **Vai trò của prompt version, token/cost, SLO hoặc rollback trong vận hành LLM:**
-- **Điều quan trọng nhất đã học:**
-- **Hạn chế hoặc phần chưa hoàn thành, nếu có:**
+- **Một quyết định kỹ thuật quan trọng và lý do:** Dùng `contextvars` kết hợp middleware để tạo hoặc nhận `x-request-id` một lần ở biên HTTP, sau đó bind cùng `correlation_id` vào structured log và metadata của mọi observation. Cách này giữ được quan hệ giữa các nguồn quan sát mà không phải truyền ID thủ công qua từng hàm, đồng thời xóa context ở đầu request để tránh rò dữ liệu giữa các request đồng thời.
+- **Một lỗi/blocker đã gặp:** Môi trường `.venv` hiện có đầy đủ Python và dependencies nhưng thiếu `Scripts/Activate.ps1`, nên PowerShell không thể kích hoạt bằng lệnh thông thường. Trong lúc kiểm tra CP3, kết nối Langfuse API cũng từng gián đoạn tạm thời.
+- **Cách tìm nguyên nhân và xử lý:** Kiểm tra trực tiếp `.venv/Scripts` xác nhận `python.exe` tồn tại nhưng `Activate.ps1` không có; thay vì tạo lại môi trường và có nguy cơ làm thay đổi dependencies, mọi lệnh được chạy bằng `./.venv/Scripts/python.exe`. Với Langfuse, giữ nguyên dữ liệu local, thử lại API sau khi kết nối phục hồi và chỉ lấy các trường cần thiết để đối chiếu trace.
+- **Cách hiểu luồng Metrics → Logs → Traces:** Metrics cho biết triệu chứng và cửa sổ thời gian, ví dụ P95 tăng lên 2655 ms. Từ cửa sổ đó, structured log cung cấp một request cụ thể qua `correlation_id=req-62cdec8c`. Tìm cùng ID trong Langfuse dẫn đến trace `deaebe6b65ce78307a8cd655879d29e1`; so sánh child spans cho thấy retrieval 2501 ms trong khi generation 154 ms, từ đó kết luận retrieval là bước gây chậm.
+- **Vai trò của prompt version, token/cost, SLO hoặc rollback trong vận hành LLM:** Prompt version và label cho phép truy ra chính xác cấu hình prompt của từng request và rollback `production` mà không sửa code. Token và cost giúp phát hiện output phình hoặc chi phí tăng dù request vẫn thành công. SLO biến kỳ vọng vận hành thành ngưỡng đo được, còn error budget cho biết mức vi phạm có thể chấp nhận trước khi phải ưu tiên độ ổn định hơn thay đổi mới.
+- **Điều quan trọng nhất đã học:** Một dashboard chỉ phát hiện được triệu chứng; kết luận root cause cần chuỗi bằng chứng nhất quán từ metric đến log có correlation ID rồi đến trace/span. Observability có giá trị khi các tín hiệu liên kết được với nhau và hỗ trợ một hành động khôi phục có thể kiểm chứng.
+- **Hạn chế hoặc phần chưa hoàn thành, nếu có:** Logic LLM và retrieval trong lab là mô phỏng nên latency, token, cost và quality proxy không đại diện cho production thật. Dashboard được tách thành hai ảnh để giữ đủ độ rõ của cả sáu panel; đây chỉ là giới hạn trình bày evidence, không ảnh hưởng dữ liệu hoặc validator.
 
 ## 9. Checklist trước khi nộp
 
 - [ ] Kết quả và evidence thuộc commit SHA cuối.
-- [ ] Tất cả ảnh/output mở được bằng đường dẫn tương đối.
-- [ ] Incident evidence nối đúng metric → log → trace.
-- [ ] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
-- [ ] Repository chạy lại được theo README.
-- [ ] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
+- [x] Tất cả ảnh/output mở được bằng đường dẫn tương đối.
+- [x] Incident evidence nối đúng metric → log → trace.
+- [x] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
+- [x] Repository chạy lại được theo README.
+- [x] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
 - [ ] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.

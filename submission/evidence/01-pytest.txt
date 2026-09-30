@@ -1,0 +1,5 @@
+CP4 final pytest verification
+Command: .\.venv\Scripts\python.exe -m pytest -q
+
+.............................                                            [100%]
+29 passed in 2.15s
